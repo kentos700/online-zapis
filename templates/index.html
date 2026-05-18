@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}ClinicFlow · Главная{% endblock %}
+
+{% block content %}
+<section class="hero-panel mb-5">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <span class="hero-tag">Автоматизированное расписание для клиник</span>
+            <h1 class="display-5 fw-bold mt-3">Онлайн-запись без очередей и двойных бронирований</h1>
+            <p class="lead text-secondary mt-3">
+                Система помогает пациентам быстро находить свободные слоты, администраторам управлять загруженностью клиники,
+                а врачам работать по понятному и предсказуемому графику.
+            </p>
+            <div class="d-flex flex-wrap gap-3 mt-4">
+                {% if current_user and current_user.role == 'patient' %}
+                    <a class="btn btn-primary btn-lg" href="{{ url_for('main.appointments') }}">Записаться на приём</a>
+                {% elif current_user and current_user.role == 'doctor' %}
+                    <a class="btn btn-primary btn-lg" href="{{ url_for('main.schedule_view') }}">Открыть расписание</a>
+                {% elif current_user and current_user.role == 'admin' %}
+                    <a class="btn btn-primary btn-lg" href="{{ url_for('main.admin_dashboard') }}">Открыть админ-панель</a>
+                {% else %}
+                    <a class="btn btn-primary btn-lg" href="{{ url_for('main.register') }}">Создать аккаунт</a>
+                    <a class="btn btn-outline-primary btn-lg" href="{{ url_for('main.login') }}">Войти</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="surface-card h-100">
+                <h5 class="fw-bold mb-3">Что умеет система</h5>
+                <div class="feature-item">
+                    <strong>Умная запись.</strong>
+                    <span>Свободные слоты проверяются автоматически, а занятое время сразу заменяется ближайшим вариантом.</span>
+                </div>
+                <div class="feature-item">
+                    <strong>Оптимизация графика.</strong>
+                    <span>Рекомендуемые слоты уменьшают простои врача и сокращают промежутки между приёмами.</span>
+                </div>
+                <div class="feature-item mb-0">
+                    <strong>Единая админ-панель.</strong>
+                    <span>Администратор видит записи, нагрузку клиники, список пациентов и параметры врачей в одном месте.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-4 mb-5">
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card">
+            <div class="metric-label">Врачи</div>
+            <div class="metric-value">{{ metrics.doctor_count }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card">
+            <div class="metric-label">Пациенты</div>
+            <div class="metric-value">{{ metrics.patient_count }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card">
+            <div class="metric-label">Предстоящие записи</div>
+            <div class="metric-value">{{ metrics.upcoming_appointments }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card">
+            <div class="metric-label">Загрузка клиники</div>
+            <div class="metric-value">{{ metrics.clinic_load }}%</div>
+        </div>
+    </div>
+</section>
+
+{% if next_appointment %}
+<section class="surface-card mb-5">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h4 class="fw-bold mb-1">Ближайшая запись</h4>
+            <p class="text-secondary mb-0">
+                {{ next_appointment.appointment_date.strftime('%d.%m.%Y') }} · {{ next_appointment.start_time.strftime('%H:%M') }} - {{ next_appointment.end_time.strftime('%H:%M') }}
+            </p>
+        </div>
+        <div class="text-end">
+            {% if current_user.role == 'patient' %}
+                <div class="fw-semibold">{{ next_appointment.doctor.full_name }}</div>
+                <div class="text-secondary">{{ next_appointment.doctor.specialization }}</div>
+            {% elif current_user.role == 'doctor' %}
+                <div class="fw-semibold">{{ next_appointment.patient.full_name }}</div>
+                <div class="text-secondary">{{ next_appointment.reason or 'Причина не указана' }}</div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<section>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Врачи клиники</h2>
+            <p class="text-secondary mb-0">Тестовые данные уже загружены, поэтому проект можно сразу запускать и изучать.</p>
+        </div>
+        {% if current_user and current_user.role in ['patient', 'admin'] %}
+            <a class="btn btn-outline-primary" href="{{ url_for('main.appointments') }}">Перейти к записи</a>
+        {% endif %}
+    </div>
+    <div class="row g-4">
+        {% for doctor in doctors %}
+            <div class="col-md-6 col-xl-4">
+                <div class="surface-card doctor-card h-100">
+                    <div class="doctor-avatar">{{ doctor.full_name[:1] }}</div>
+                    <h5 class="fw-bold mt-3 mb-1">{{ doctor.full_name }}</h5>
+                    <div class="text-primary fw-semibold">{{ doctor.specialization }}</div>
+                    <div class="text-secondary mt-2">Кабинет: {{ doctor.room_number or 'не указан' }}</div>
+                    <div class="text-secondary">Длительность приёма: {{ doctor.appointment_duration }} мин.</div>
+                    <p class="text-secondary mt-3 mb-0">{{ doctor.bio or 'Профиль врача доступен в системе.' }}</p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}ClinicFlow · Записи{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Записи на приём</h2>
+        <p class="text-secondary mb-0">
+            {% if current_user.role == 'doctor' %}
+                Просмотр списка пациентов и ближайших визитов.
+            {% elif current_user.role == 'admin' %}
+                Бронирование, перенос и отмена записей пациентов.
+            {% else %}
+                Выберите врача, дату и свободный слот для записи.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+{% if can_book %}
+<div class="row g-4 mb-5">
+    <div class="col-lg-5">
+        <div class="surface-card h-100">
+            <h4 class="fw-bold mb-3">Подобрать слот</h4>
+            <form method="get" class="row g-3 mb-4">
+                <div class="col-12">
+                    <label class="form-label">Врач</label>
+                    <select name="doctor_id" class="form-select" required>
+                        {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}" {% if doctor.id == selected_doctor_id %}selected{% endif %}>
+                                {{ doctor.full_name }} · {{ doctor.specialization }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Дата</label>
+                    <input type="date" name="appointment_date" class="form-control" value="{{ selected_date.isoformat() }}" required>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-outline-primary w-100">Показать свободные слоты</button>
+                </div>
+            </form>
+
+            <hr>
+
+            <h5 class="fw-bold mt-4 mb-3">Подтвердить запись</h5>
+            <form method="post" class="row g-3">
+                {% if current_user.role == 'admin' %}
+                    <div class="col-12">
+                        <label class="form-label">Пациент</label>
+                        <select name="patient_id" class="form-select" required>
+                            <option value="">Выберите пациента</option>
+                            {% for patient in booking_patients %}
+                                <option value="{{ patient.id }}">{{ patient.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+                <div class="col-12">
+                    <label class="form-label">Врач</label>
+                    <select name="doctor_id" class="form-select" required>
+                        {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}" {% if doctor.id == selected_doctor_id %}selected{% endif %}>
+                                {{ doctor.full_name }} · {{ doctor.specialization }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Дата</label>
+                    <input type="date" name="appointment_date" class="form-control" value="{{ selected_date.isoformat() }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Время</label>
+                    <select name="start_time" class="form-select" required>
+                        <option value="">Выберите слот</option>
+                        {% for slot in available_slots %}
+                            <option value="{{ slot.start_time.strftime('%H:%M') }}">
+                                {{ slot.start_time.strftime('%H:%M') }} - {{ slot.end_time.strftime('%H:%M') }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Причина обращения</label>
+                    <textarea name="reason" rows="3" class="form-control" placeholder="Например: консультация, повторный осмотр, результаты анализов"></textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary w-100">Подтвердить запись</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="surface-card h-100">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+                <div>
+                    <h4 class="fw-bold mb-1">Доступные слоты</h4>
+                    <p class="text-secondary mb-0">
+                        {% if selected_doctor %}
+                            {{ selected_doctor.full_name }} · {{ selected_doctor.specialization }} · {{ selected_date.strftime('%d.%m.%Y') }}
+                        {% endif %}
+                    </p>
+                </div>
+                <span class="badge text-bg-light">{{ available_slots|length }} слотов</span>
+            </div>
+
+            {% if recommended_slot %}
+                <div class="alert alert-success">
+                    Рекомендуемый слот для снижения простоев:
+                    <strong>{{ recommended_slot.start_time.strftime('%H:%M') }} - {{ recommended_slot.end_time.strftime('%H:%M') }}</strong>
+                </div>
+            {% endif %}
+
+            {% if available_slots %}
+                <div class="slot-grid">
+                    {% for slot in available_slots %}
+                        <div class="slot-chip {% if recommended_slot and slot.start_time == recommended_slot.start_time %}recommended{% endif %}">
+                            <strong>{{ slot.start_time.strftime('%H:%M') }}</strong>
+                            <span>{{ slot.end_time.strftime('%H:%M') }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    На выбранную дату свободных слотов нет. Система автоматически предложит ближайшее доступное время при попытке записи.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="surface-card">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+        <div>
+            <h4 class="fw-bold mb-1">
+                {% if current_user.role == 'admin' %}
+                    Все записи клиники
+                {% elif current_user.role == 'doctor' %}
+                    Ваши приёмы
+                {% else %}
+                    Ваши записи
+                {% endif %}
+            </h4>
+            <p class="text-secondary mb-0">Подтверждения, отмены и напоминания отображаются в статусе и примечаниях.</p>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    {% if current_user.role != 'patient' %}
+                        <th>Пациент</th>
+                    {% endif %}
+                    {% if current_user.role != 'doctor' %}
+                        <th>Врач</th>
+                    {% endif %}
+                    <th>Дата</th>
+                    <th>Время</th>
+                    <th>Статус</th>
+                    <th>Причина</th>
+                    <th>Уведомление</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in appointments %}
+                    <tr>
+                        {% if current_user.role != 'patient' %}
+                            <td>{{ appointment.patient.full_name }}</td>
+                        {% endif %}
+                        {% if current_user.role != 'doctor' %}
+                            <td>
+                                <div>{{ appointment.doctor.full_name }}</div>
+                                <small class="text-secondary">{{ appointment.doctor.specialization }}</small>
+                            </td>
+                        {% endif %}
+                        <td>{{ appointment.appointment_date.strftime('%d.%m.%Y') }}</td>
+                        <td>{{ appointment.start_time.strftime('%H:%M') }} - {{ appointment.end_time.strftime('%H:%M') }}</td>
+                        <td>
+                            <span class="badge {% if appointment.status == 'cancelled' %}text-bg-secondary{% elif appointment.status == 'rescheduled' %}text-bg-warning{% else %}text-bg-success{% endif %}">
+                                {{ status_labels[appointment.status] }}
+                            </span>
+                        </td>
+                        <td>{{ appointment.reason or 'Не указана' }}</td>
+                        <td>{{ appointment.notes or 'Напоминание будет отправлено автоматически.' }}</td>
+                        <td class="actions-column">
+                            {% if current_user.role == 'patient' and appointment.status != 'cancelled' %}
+                                <form method="post" action="{{ url_for('main.cancel_appointment', appointment_id=appointment.id) }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Отменить</button>
+                                </form>
+                            {% elif current_user.role == 'admin' and appointment.status != 'cancelled' %}
+                                <form method="post" action="{{ url_for('main.reschedule_appointment', appointment_id=appointment.id) }}" class="mini-form">
+                                    <input type="date" name="new_date" class="form-control form-control-sm" value="{{ appointment.appointment_date.isoformat() }}" required>
+                                    <input type="time" name="new_time" class="form-control form-control-sm" value="{{ appointment.start_time.strftime('%H:%M') }}" required>
+                                    <button type="submit" class="btn btn-outline-primary btn-sm">Перенести</button>
+                                </form>
+                                <form method="post" action="{{ url_for('main.cancel_appointment', appointment_id=appointment.id) }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm mt-2">Отменить</button>
+                                </form>
+                            {% else %}
+                                <span class="text-secondary small">Нет доступных действий</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-secondary py-4">Записей пока нет.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

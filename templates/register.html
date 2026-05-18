@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}ClinicFlow · Регистрация{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-8">
+        <div class="surface-card">
+            <h2 class="fw-bold mb-2">Регистрация пользователя</h2>
+            <p class="text-secondary mb-4">В учебной версии можно зарегистрировать пациента или врача. Администратора создаёт действующий администратор.</p>
+
+            <form method="post" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">ФИО</label>
+                    <input type="text" name="full_name" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Роль</label>
+                    <select name="role" id="role" class="form-select" onchange="toggleRoleFields()">
+                        <option value="patient">Пациент</option>
+                        <option value="doctor">Врач</option>
+                        {% if can_create_admin %}
+                            <option value="admin">Администратор</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Телефон</label>
+                    <input type="text" name="phone" class="form-control" placeholder="+998901234567">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" name="password" class="form-control" minlength="6" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Повторите пароль</label>
+                    <input type="password" name="confirm_password" class="form-control" minlength="6" required>
+                </div>
+
+                <div id="doctor-fields" class="row g-3 m-0 p-0 d-none">
+                    <div class="col-md-6">
+                        <label class="form-label">Специализация</label>
+                        <input type="text" name="specialization" class="form-control" placeholder="Терапевт">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Кабинет</label>
+                        <input type="text" name="room_number" class="form-control" placeholder="101">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Длительность приёма, мин</label>
+                        <input type="number" name="appointment_duration" class="form-control" min="10" max="120" value="30">
+                    </div>
+                </div>
+
+                <div id="patient-fields" class="row g-3 m-0 p-0">
+                    <div class="col-md-6">
+                        <label class="form-label">Дата рождения</label>
+                        <input type="date" name="birth_date" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Номер страхового полиса</label>
+                        <input type="text" name="insurance_number" class="form-control" placeholder="INS-001">
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+                    <a href="{{ url_for('main.login') }}" class="btn btn-outline-secondary">Уже есть аккаунт</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleRoleFields() {
+    const role = document.getElementById('role').value;
+    const doctorFields = document.getElementById('doctor-fields');
+    const patientFields = document.getElementById('patient-fields');
+    doctorFields.classList.toggle('d-none', role !== 'doctor');
+    patientFields.classList.toggle('d-none', role !== 'patient');
+}
+document.addEventListener('DOMContentLoaded', toggleRoleFields);
+</script>
+{% endblock %}

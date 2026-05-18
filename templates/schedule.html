@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}ClinicFlow · Расписание{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Расписание врачей</h2>
+        <p class="text-secondary mb-0">Добавляйте рабочие интервалы, управляйте длительностью слотов и отслеживайте ближайшие приёмы.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="surface-card h-100">
+            <h4 class="fw-bold mb-3">Добавить рабочий день</h4>
+            <form method="post" class="row g-3">
+                {% if current_user.role == 'admin' %}
+                    <div class="col-12">
+                        <label class="form-label">Врач</label>
+                        <select name="doctor_id" class="form-select" required>
+                            {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}" {% if selected_doctor and doctor.id == selected_doctor.id %}selected{% endif %}>
+                                    {{ doctor.full_name }} · {{ doctor.specialization }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+                <div class="col-md-6">
+                    <label class="form-label">Дата</label>
+                    <input type="date" name="work_date" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Начало</label>
+                    <input type="time" name="start_time" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Конец</label>
+                    <input type="time" name="end_time" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Длительность слота, мин</label>
+                    <input type="number" name="slot_duration" class="form-control" min="10" max="120" value="{{ selected_doctor.appointment_duration if selected_doctor else 30 }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Примечание</label>
+                    <input type="text" name="notes" class="form-control" placeholder="Например: утренний приём">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary w-100">Сохранить расписание</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="surface-card h-100">
+            <h4 class="fw-bold mb-3">Информация о враче</h4>
+            {% if selected_doctor %}
+                <div class="d-flex justify-content-between flex-wrap gap-3 mb-4">
+                    <div>
+                        <div class="fs-5 fw-bold">{{ selected_doctor.full_name }}</div>
+                        <div class="text-primary fw-semibold">{{ selected_doctor.specialization }}</div>
+                    </div>
+                    <div class="text-secondary text-end">
+                        <div>Кабинет: {{ selected_doctor.room_number or 'не указан' }}</div>
+                        <div>Базовая длительность приёма: {{ selected_doctor.appointment_duration }} мин.</div>
+                    </div>
+                </div>
+                <p class="text-secondary mb-0">{{ selected_doctor.bio or 'Описание врача можно дополнить в админ-панели.' }}</p>
+            {% else %}
+                <div class="empty-state">Сначала добавьте врача или выберите его из списка.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="surface-card mt-4">
+    <h4 class="fw-bold mb-3">Предстоящие рабочие интервалы</h4>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Время</th>
+                    <th>Слоты</th>
+                    <th>Статус</th>
+                    <th>Примечание</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for schedule in schedules %}
+                    <tr>
+                        <td>{{ schedule.work_date.strftime('%d.%m.%Y') }}</td>
+                        <td>{{ schedule.start_time.strftime('%H:%M') }} - {{ schedule.end_time.strftime('%H:%M') }}</td>
+                        <td>{{ schedule.total_slots }} по {{ schedule.slot_duration }} мин.</td>
+                        <td>
+                            <span class="badge {% if schedule.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+                                {{ 'Активно' if schedule.is_active else 'Отключено' }}
+                            </span>
+                        </td>
+                        <td>{{ schedule.notes or 'Без примечаний' }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-4">Рабочие интервалы пока не добавлены.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="surface-card mt-4">
+    <h4 class="fw-bold mb-3">Ближайшие приёмы</h4>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Время</th>
+                    <th>Пациент</th>
+                    <th>Причина</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in upcoming_appointments %}
+                    <tr>
+                        <td>{{ appointment.appointment_date.strftime('%d.%m.%Y') }}</td>
+                        <td>{{ appointment.start_time.strftime('%H:%M') }} - {{ appointment.end_time.strftime('%H:%M') }}</td>
+                        <td>{{ appointment.patient.full_name }}</td>
+                        <td>{{ appointment.reason or 'Не указана' }}</td>
+                        <td>{{ status_labels[appointment.status] }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-4">Пока нет запланированных приёмов.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

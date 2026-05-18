@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}ClinicFlow · Админ-панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Панель администратора</h2>
+        <p class="text-secondary mb-0">Здесь собраны метрики клиники, управление врачами и пациентами, а также обзор всех записей.</p>
+    </div>
+    <a href="{{ url_for('main.appointments') }}" class="btn btn-primary">Управлять записями</a>
+</div>
+
+<section class="row g-4 mb-5">
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card">
+            <div class="metric-label">Врачи</div>
+            <div class="metric-value">{{ metrics.doctor_count }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card">
+            <div class="metric-label">Пациенты</div>
+            <div class="metric-value">{{ metrics.patient_count }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card">
+            <div class="metric-label">Предстоящие записи</div>
+            <div class="metric-value">{{ metrics.upcoming_appointments }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card">
+            <div class="metric-label">Средняя загрузка</div>
+            <div class="metric-value">{{ metrics.clinic_load }}%</div>
+        </div>
+    </div>
+</section>
+
+<section class="surface-card mb-4">
+    <h4 class="fw-bold mb-3">Загруженность клиники на 7 дней</h4>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Врач</th>
+                    <th>Специализация</th>
+                    <th>Свободных слотов</th>
+                    <th>Занято</th>
+                    <th>Загрузка</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in load_report %}
+                    <tr>
+                        <td>{{ item.doctor.full_name }}</td>
+                        <td>{{ item.doctor.specialization }}</td>
+                        <td>{{ item.total_slots }}</td>
+                        <td>{{ item.booked_slots }}</td>
+                        <td>{{ item.load_percent }}%</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-4">Данных о нагрузке пока нет.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+        <h4 class="fw-bold mb-0">Управление врачами</h4>
+        <a href="{{ url_for('main.register') }}" class="btn btn-outline-primary">Добавить пользователя</a>
+    </div>
+    <div class="row g-4">
+        {% for doctor in doctors %}
+            <div class="col-xl-4 col-md-6">
+                <div class="surface-card h-100">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">{{ doctor.full_name }}</h5>
+                            <div class="text-secondary">{{ doctor.user.email }}</div>
+                        </div>
+                        <span class="badge {% if doctor.user.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+                            {{ 'Активен' if doctor.user.is_active else 'Отключён' }}
+                        </span>
+                    </div>
+
+                    <form method="post" action="{{ url_for('main.update_doctor', doctor_id=doctor.id) }}" class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Специализация</label>
+                            <input type="text" name="specialization" class="form-control" value="{{ doctor.specialization }}" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Кабинет</label>
+                            <input type="text" name="room_number" class="form-control" value="{{ doctor.room_number or '' }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Приём, мин</label>
+                            <input type="number" name="appointment_duration" class="form-control" min="10" max="120" value="{{ doctor.appointment_duration }}">
+                        </div>
+                        <div class="col-12 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-grow-1">Сохранить</button>
+                        </div>
+                    </form>
+
+                    <form method="post" action="{{ url_for('main.toggle_user_active', user_id=doctor.user.id) }}" class="mt-3">
+                        <button type="submit" class="btn btn-outline-secondary w-100">
+                            {{ 'Деактивировать' if doctor.user.is_active else 'Активировать' }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="surface-card mb-4">
+    <h4 class="fw-bold mb-3">Управление пациентами</h4>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Пациент</th>
+                    <th>Email</th>
+                    <th>Телефон</th>
+                    <th>Полис</th>
+                    <th>Статус</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients %}
+                    <tr>
+                        <td>{{ patient.full_name }}</td>
+                        <td>{{ patient.user.email }}</td>
+                        <td>{{ patient.user.phone or 'Не указан' }}</td>
+                        <td>{{ patient.insurance_number or 'Не указан' }}</td>
+                        <td>{{ 'Активен' if patient.user.is_active else 'Отключён' }}</td>
+                        <td>
+                            <form method="post" action="{{ url_for('main.toggle_user_active', user_id=patient.user.id) }}">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                    {{ 'Деактивировать' if patient.user.is_active else 'Активировать' }}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-4">Пациенты пока не зарегистрированы.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="surface-card">
+    <h4 class="fw-bold mb-3">Все записи</h4>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Время</th>
+                    <th>Пациент</th>
+                    <th>Врач</th>
+                    <th>Статус</th>
+                    <th>Причина</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in appointments %}
+                    <tr>
+                        <td>{{ appointment.appointment_date.strftime('%d.%m.%Y') }}</td>
+                        <td>{{ appointment.start_time.strftime('%H:%M') }} - {{ appointment.end_time.strftime('%H:%M') }}</td>
+                        <td>{{ appointment.patient.full_name }}</td>
+                        <td>{{ appointment.doctor.full_name }}</td>
+                        <td>{{ status_labels[appointment.status] }}</td>
+                        <td>{{ appointment.reason or 'Не указана' }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-4">Записей пока нет.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
